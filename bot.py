@@ -1,6 +1,8 @@
 __version__ = "4.2.1"
 
-
+import http.server
+import socketserver
+import threading
 import asyncio
 import copy
 import hashlib
@@ -2263,4 +2265,26 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # --- BLOQUE PARA EVITAR EL TIMEOUT ---
+    import http.server
+    import socketserver
+    import threading
+
+    def run_health_check():
+        # Render/Railway pasan el puerto en la variable PORT, si no hay usamos 8080
+        port = int(os.environ.get("PORT", 8080))
+        # Servidor extremadamente simple que responde 200 OK a todo
+        handler = http.server.SimpleHTTPRequestHandler
+        # Permitimos reuso de puerto para evitar errores en reinicios rápidos
+        socketserver.TCPServer.allow_reuse_address = True
+        with socketserver.TCPServer(("0.0.0.0", port), handler) as httpd:
+            print(f"Puerto {port} abierto para el health check del hosting.")
+            httpd.serve_forever()
+
+    # Iniciamos el servidor en un hilo aparte para que el bot pueda arrancar en el principal
+    threading.Thread(target=run_health_check, daemon=True).start()
+    # -------------------------------------
+
+    # Tu código original para arrancar el bot
+    bot = ModmailBot()
+    bot.run()
